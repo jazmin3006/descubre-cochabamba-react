@@ -1,19 +1,31 @@
-# Descubre Cochabamba - base React
+# Descubre Cochabamba
 
-Este proyecto contiene una base React/Vite preparada para migrar la aplicación Legacy.
+Aplicación turística de una sola página construida con React y Vite. Las vistas se navegan en el cliente con React Router; el recorrido y las reservas se guardan en `localStorage` del navegador.
 
-## Estructura
+## Requisitos y comandos
 
-- `.docs/Legacy/` contiene el proyecto original sin modificar.
-- `.docs/Liberia-de-Componentes/` debe contener la documentación real de la librería de componentes de la tarea.
-- `src/` contiene la aplicación React que Copilot deberá implementar.
+Se requiere Node.js 20 o posterior.
 
-## Antes de usar Copilot
+```bash
+npm install
+npm run dev
+npm run build
+npm run preview
+npm run lint
+npm test
+```
 
-1. Instalar Node.js si todavía no está instalado.
-2. Abrir esta carpeta completa en VS Code.
-3. Ejecutar `npm install`.
-4. Copiar la documentación real de la librería de componentes dentro de `.docs/Liberia-de-Componentes/`.
-5. Abrir Copilot Chat desde esta carpeta y pegar el prompt de migración.
+El servidor de desarrollo y el build usan la base `/descubre-cochabamba-react/`; abre `http://localhost:5173/descubre-cochabamba-react/` en local. El build genera `dist/404.html` como fallback para abrir o recargar rutas internas en GitHub Pages.
 
-No modificar manualmente `.docs/Legacy/`; es la fuente de referencia.
+## Vistas
+
+- `/`: inicio con destinos, recomendaciones, planificador y reservas.
+- `/lugares`: búsqueda, categorías y destinos.
+- `/categorias`: filtros y destinos.
+- `/planifica`: recomendaciones y recorrido.
+- `/reservas`: formulario de reserva.
+- Cualquier otra ruta muestra la vista de página no encontrada.
+
+## Despliegue
+
+El workflow `.github/workflows/deploy.yml` compila y publica `dist` al hacer push a `main` o mediante ejecución manual. En **Settings → Pages**, selecciona **GitHub Actions** como fuente de despliegue. No se requiere modificar archivos de `.docs/Legacy`.

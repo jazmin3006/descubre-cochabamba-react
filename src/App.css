@@ -432,6 +432,23 @@ select {
   text-align: center;
 }
 
+.not-found {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-height: 300px;
+  text-align: center;
+}
+
+.not-found h2 {
+  font-family: Georgia, serif;
+  font-size: clamp(28px, 5vw, 40px);
+}
+
+.not-found p:not(.eyebrow) {
+  color: var(--muted);
+}
+
 .recommend-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
