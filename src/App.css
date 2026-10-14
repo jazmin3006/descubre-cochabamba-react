@@ -813,6 +813,10 @@ footer p {
     display: flex;
   }
 
+  .nav {
+    z-index: 3;
+  }
+
   .menu-btn {
     display: block;
   }

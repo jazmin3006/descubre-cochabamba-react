@@ -160,12 +160,14 @@ function BookingSection() {
       createdAt: new Date().toISOString(),
     }
 
-    const reservations = readStoredArray(reservationStorageKey)
-    reservations.push(reservation)
     try {
+      const reservations = readStoredArray(reservationStorageKey)
+      reservations.push(reservation)
       window.localStorage.setItem(reservationStorageKey, JSON.stringify(reservations))
-    } catch {
-      // La confirmación en pantalla sigue disponible si el almacenamiento está bloqueado.
+    } catch (error) {
+      console.error('No se pudo guardar la reserva.', error)
+      setFeedback({ type: 'error', text: 'No pudimos guardar tu reserva. Revisa el almacenamiento del navegador e inténtalo nuevamente.' })
+      return
     }
     setFeedback({ type: 'success', reservation })
     setForm(initialBooking)
@@ -185,7 +187,7 @@ function BookingSection() {
             <div className="field"><label htmlFor="bookingPeople">Personas</label><input ref={(node) => { fieldRefs.current.people = node }} id="bookingPeople" type="number" min="1" max="15" value={form.people} onChange={(event) => updateField('people', event.target.value === '' ? '' : String(Math.max(1, Math.min(15, Number(event.target.value)))))} required /></div>
             <div className="field"><label htmlFor="bookingName">Nombre completo</label><input ref={(node) => { fieldRefs.current.name = node }} id="bookingName" type="text" placeholder="Tu nombre" value={form.name} onChange={(event) => updateField('name', event.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, ''))} required /></div>
             <div className="field"><label htmlFor="bookingEmail">Correo electrónico</label><input ref={(node) => { fieldRefs.current.email = node }} id="bookingEmail" type="email" placeholder="nombre@correo.com" value={form.email} onChange={(event) => updateField('email', event.target.value)} required /></div>
-            <div className="field full"><label htmlFor="bookingPhone">Teléfono</label><input ref={(node) => { fieldRefs.current.phone = node }} id="bookingPhone" type="tel" placeholder="Ej. 76543210" inputMode="numeric" minLength="8" maxLength="8" pattern="[0-9]{8}" autoComplete="tel" value={form.phone.replace(/\D/g, '').slice(0, 8)} onChange={(event) => updateField('phone', event.target.value.replace(/\D/g, '').slice(0, 8))} required /><small className="form-error" aria-live="polite">{form.phone.length > 0 && form.phone.length < 8 ? 'El teléfono debe tener exactamente 8 dígitos.' : ''}</small></div>
+            <div className="field full"><label htmlFor="bookingPhone">Teléfono</label><input ref={(node) => { fieldRefs.current.phone = node }} id="bookingPhone" type="tel" placeholder="Ej. 76543210" inputMode="numeric" minLength="8" pattern="[0-9]{8}" autoComplete="tel" value={form.phone.replace(/\D/g, '').slice(0, 8)} onChange={(event) => updateField('phone', event.target.value.replace(/\D/g, '').slice(0, 8))} required /><small className="form-error" aria-live="polite">{form.phone.length > 0 && form.phone.length < 8 ? 'El teléfono debe tener exactamente 8 dígitos.' : ''}</small></div>
           </div>
           <div className="booking-summary"><div><strong>Solicitud de reserva</strong><p>Recibirás una confirmación con los detalles de tu solicitud.</p></div><button className="btn primary" type="submit">Confirmar reserva</button></div>
           {feedback?.type === 'error' && <p className="booking-message form-feedback error-feedback" role="alert">{feedback.text}</p>}
@@ -199,8 +201,20 @@ function BookingSection() {
 function App() {
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('Todos')
-  const [route, setRoute] = useState(() => readStoredArray(routeStorageKey).filter((name) => places.some((place) => place.name === name)))
-  const [notice, setNotice] = useState('')
+  const [initialRoute] = useState(() => {
+    try {
+      return {
+        places: readStoredArray(routeStorageKey).filter((name) => places.some((place) => place.name === name)),
+        error: '',
+      }
+    } catch (error) {
+      console.error('No se pudo cargar el recorrido guardado.', error)
+      return { places: [], error: 'No se pudo cargar el recorrido guardado.' }
+    }
+  })
+  const [route, setRoute] = useState(initialRoute.places)
+  const [routeHasChanged, setRouteHasChanged] = useState(false)
+  const [notice, setNotice] = useState(initialRoute.error)
   const [selectedPlace, setSelectedPlace] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const plannerRef = useRef(null)
@@ -208,12 +222,15 @@ function App() {
   const closeModal = useCallback(() => setSelectedPlace(null), [])
 
   useEffect(() => {
+    if (!routeHasChanged) return
+
     try {
       window.localStorage.setItem(routeStorageKey, JSON.stringify(route))
-    } catch {
-      // El recorrido permanece disponible en memoria durante esta sesión.
+    } catch (error) {
+      console.error('No se pudo guardar el recorrido.', error)
+      setNotice('No se pudo guardar el recorrido. Revisa el almacenamiento del navegador.')
     }
-  }, [route])
+  }, [route, routeHasChanged])
 
   const filteredPlaces = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -230,11 +247,18 @@ function App() {
       return
     }
     setRoute((current) => current.includes(name) ? current : [...current, name])
+    setRouteHasChanged(true)
     setNotice(`${name} fue agregado a tu recorrido.`)
   }
 
   function removeFromRoute(name) {
     setRoute((current) => current.filter((place) => place !== name))
+    setRouteHasChanged(true)
+  }
+
+  function clearRoute() {
+    setRoute([])
+    setRouteHasChanged(true)
   }
 
   function addRecommendedRoute(routeName) {
@@ -268,7 +292,7 @@ function App() {
 
         <section className="recommend-section section"><div className="section-heading"><div><p className="eyebrow">IDEAS PARA TU VISITA</p><h2>Experiencias recomendadas</h2></div></div><div className="recommend-grid"><article><span>01</span><h3>Un día cultural</h3><p>Centro histórico, Plaza 14 de Septiembre y Palacio Portales.</p><button className="text-btn" onClick={() => addRecommendedRoute('cultural')} type="button">Agregar recorrido</button></article><article><span>02</span><h3>Naturaleza y paisaje</h3><p>Laguna Angostura y una experiencia en el entorno del Tunari.</p><button className="text-btn" onClick={() => addRecommendedRoute('naturaleza')} type="button">Agregar recorrido</button></article><article><span>03</span><h3>Ruta de aventura</h3><p>Destinos para caminar, explorar y disfrutar del paisaje.</p><button className="text-btn" onClick={() => addRecommendedRoute('aventura')} type="button">Agregar recorrido</button></article></div></section>
 
-        <section ref={plannerRef} className="planner section" id="planifica"><div className="planner-copy"><p className="eyebrow">TU PRÓXIMA AVENTURA</p><h2>Planifica tu recorrido</h2><p>Selecciona tus destinos favoritos y arma una ruta personalizada. Puedes quitar lugares o cambiar de idea cuando quieras.</p></div><div className="route-box"><div className="route-header"><h3>Mi recorrido</h3><span>{route.length} {route.length === 1 ? 'lugar' : 'lugares'}</span></div><div className="route-list" aria-live="polite">{route.length === 0 ? <p className="empty-route">Todavía no agregaste lugares.</p> : route.map((name, index) => <div className="route-item" key={name}><span><b>{index + 1}</b>{name}</span><button onClick={() => removeFromRoute(name)} aria-label={`Quitar ${name}`} type="button">×</button></div>)}</div><div className="route-actions"><button className="btn secondary" onClick={() => setRoute([])} type="button">Limpiar</button><a className="btn primary" href="#reservas">Reservar experiencia</a></div></div></section>
+        <section ref={plannerRef} className="planner section" id="planifica"><div className="planner-copy"><p className="eyebrow">TU PRÓXIMA AVENTURA</p><h2>Planifica tu recorrido</h2><p>Selecciona tus destinos favoritos y arma una ruta personalizada. Puedes quitar lugares o cambiar de idea cuando quieras.</p></div><div className="route-box"><div className="route-header"><h3>Mi recorrido</h3><span>{route.length} {route.length === 1 ? 'lugar' : 'lugares'}</span></div><div className="route-list" aria-live="polite">{route.length === 0 ? <p className="empty-route">Todavía no agregaste lugares.</p> : route.map((name, index) => <div className="route-item" key={name}><span><b>{index + 1}</b>{name}</span><button onClick={() => removeFromRoute(name)} aria-label={`Quitar ${name}`} type="button">×</button></div>)}</div><div className="route-actions"><button className="btn secondary" onClick={clearRoute} type="button">Limpiar</button><a className="btn primary" href="#reservas">Reservar experiencia</a></div></div></section>
 
         <BookingSection />
       </main>

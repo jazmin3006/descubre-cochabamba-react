@@ -81,10 +81,9 @@ export function getToday() {
 }
 
 export function readStoredArray(key) {
-  try {
-    const value = JSON.parse(window.localStorage.getItem(key) || '[]')
-    return Array.isArray(value) ? value : []
-  } catch {
-    return []
+  const value = JSON.parse(window.localStorage.getItem(key) ?? '[]')
+  if (!Array.isArray(value)) {
+    throw new Error(`El valor guardado para "${key}" no es una lista válida.`)
   }
+  return value
 }
