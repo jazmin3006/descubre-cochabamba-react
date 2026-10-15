@@ -26,6 +26,14 @@ El servidor de desarrollo y el build usan la base `/descubre-cochabamba-react/`;
 - `/reservas`: formulario de reserva.
 - Cualquier otra ruta muestra la vista de página no encontrada.
 
+## Estructura de `src`
+
+- `App.jsx`: navegación, estado compartido y composición de las vistas.
+- `components/`: componentes de interfaz como tarjetas de destinos, modal, reservas y página no encontrada.
+- `data/places.js`: destinos, categorías, rutas recomendadas y utilidades de almacenamiento.
+- `App.css`: estilos globales de la aplicación.
+- `main.jsx`: punto de entrada de React.
+
 ## Despliegue
 
 El workflow `.github/workflows/deploy.yml` compila y publica `dist` al hacer push a `main` o mediante ejecución manual. En **Settings → Pages**, selecciona **GitHub Actions** como fuente de despliegue. No se requiere modificar archivos de `.docs/Legacy`.

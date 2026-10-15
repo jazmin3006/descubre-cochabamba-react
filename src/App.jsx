@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import './App.css'
+import BookingSection from './components/BookingSection.jsx'
+import DestinationModal from './components/DestinationModal.jsx'
+import NotFoundPage from './components/NotFoundPage.jsx'
+import PlaceCard from './components/PlaceCard.jsx'
 import {
   categories,
-  getToday,
   places,
   readStoredArray,
   recommendedRoutes,
@@ -11,207 +14,9 @@ import {
   routeStorageKey,
 } from './data/places.js'
 
-const namePattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/
-
-function PlaceImage({ place, modal = false }) {
-  const [failed, setFailed] = useState(false)
-
-  return (
-    <div className={`place-image${modal ? ' modal-image' : ''}${failed ? ' image-error' : ''}`}>
-      {!failed && (
-        <img
-          src={place.image}
-          alt={`Fotografía de ${place.name}`}
-          loading={modal ? 'eager' : 'lazy'}
-          onError={() => setFailed(true)}
-        />
-      )}
-      {failed && <span aria-hidden="true">{place.name}</span>}
-      {!modal && <span className="image-label">{place.category.toUpperCase()}</span>}
-    </div>
-  )
-}
-
-function PlaceCard({ place, onInfo, onAdd }) {
-  return (
-    <article className="card">
-      <PlaceImage place={place} />
-      <div className="card-body">
-        <div className="card-top">
-          <span className="mini-category">{place.category}</span>
-          <span className="rating">★ {place.rating}</span>
-        </div>
-        <h3>{place.name}</h3>
-        <p className="card-description">{place.description}</p>
-        <p className="location">{place.location}</p>
-        <div className="card-meta">
-          <span>{place.time}</span>
-          <span>{place.price}</span>
-        </div>
-        <div className="card-actions">
-          <button className="info-btn" onClick={() => onInfo(place)} type="button">Ver información</button>
-          <button className="add-btn" onClick={() => onAdd(place.name)} type="button">+ Recorrido</button>
-        </div>
-      </div>
-    </article>
-  )
-}
-
-function DestinationModal({ place, isAdded, onClose, onAdd }) {
-  const closeButtonRef = useRef(null)
-
-  useEffect(() => {
-    if (!place) return undefined
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    closeButtonRef.current?.focus()
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [place, onClose])
-
-  if (!place) return null
-
-  return (
-    <div className="modal" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose()
-    }}>
-      <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <button ref={closeButtonRef} className="close" onClick={onClose} type="button" aria-label="Cerrar">×</button>
-        <PlaceImage place={place} modal />
-        <p className="eyebrow">INFORMACIÓN DEL DESTINO</p>
-        <h2 id="modalTitle">{place.name}</h2>
-        <p>{place.description}</p>
-        <div className="modal-details">
-          <div><strong>Categoría</strong><span>{place.category}</span></div>
-          <div><strong>Ubicación</strong><span>{place.location}</span></div>
-          <div><strong>Tiempo recomendado</strong><span>{place.time}</span></div>
-          <div><strong>Costo</strong><span>{place.price}</span></div>
-          <div><strong>Valoración</strong><span>★ {place.rating}</span></div>
-        </div>
-        <div className="modal-actions">
-          <button className="btn secondary" onClick={onClose} type="button">Cerrar</button>
-          <button className="btn primary" onClick={() => onAdd(place.name)} type="button">
-            {isAdded ? 'Ya está en tu recorrido' : 'Agregar al recorrido'}
-          </button>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-const initialBooking = {
-  place: '',
-  date: '',
-  time: '',
-  people: '2',
-  name: '',
-  email: '',
-  phone: '',
-}
-
-function BookingSection() {
-  const [form, setForm] = useState(initialBooking)
-  const [feedback, setFeedback] = useState(null)
-  const fieldRefs = useRef({})
-  const today = getToday()
-
-  function updateField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
-    setFeedback(null)
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault()
-    const name = form.name.trim()
-    const email = form.email.trim()
-    let invalidField = ''
-    let error = ''
-
-    if (!form.place) [invalidField, error] = ['place', 'Selecciona un destino turístico.']
-    else if (!form.date || form.date < getToday()) [invalidField, error] = ['date', 'Selecciona una fecha válida. No puedes reservar una fecha anterior a hoy.']
-    else if (!form.time) [invalidField, error] = ['time', 'Selecciona un horario.']
-    else if (!Number.isInteger(Number(form.people)) || Number(form.people) < 1 || Number(form.people) > 15) [invalidField, error] = ['people', 'La cantidad de personas debe estar entre 1 y 15.']
-    else if (name.length < 3 || !namePattern.test(name)) [invalidField, error] = ['name', 'Ingresa un nombre válido.']
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) [invalidField, error] = ['email', 'Ingresa un correo electrónico válido.']
-    else if (!/^\d{8}$/.test(form.phone)) [invalidField, error] = ['phone', 'El teléfono debe tener exactamente 8 dígitos.']
-
-    if (error) {
-      setFeedback({ type: 'error', text: error })
-      fieldRefs.current[invalidField]?.focus()
-      return
-    }
-
-    const reservation = {
-      code: `COCHA-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
-      name,
-      place: form.place,
-      date: form.date,
-      time: form.time,
-      people: Number(form.people),
-      email,
-      phone: form.phone,
-      createdAt: new Date().toISOString(),
-    }
-
-    try {
-      const reservations = readStoredArray(reservationStorageKey)
-      reservations.push(reservation)
-      window.localStorage.setItem(reservationStorageKey, JSON.stringify(reservations))
-    } catch (error) {
-      console.error('No se pudo guardar la reserva.', error)
-      setFeedback({ type: 'error', text: 'No pudimos guardar tu reserva. Revisa el almacenamiento del navegador e inténtalo nuevamente.' })
-      return
-    }
-    setFeedback({ type: 'success', reservation })
-    setForm(initialBooking)
-  }
-
-  return (
-    <section className="booking-section" id="reservas">
-      <div className="section booking-inner">
-        <div className="section-heading">
-          <div><p className="eyebrow">RESERVAS</p><h2>Reserva tu experiencia</h2><p>Completa tus datos para solicitar una visita o experiencia turística.</p></div>
-        </div>
-        <form className="booking-form" onSubmit={handleSubmit} noValidate>
-          <div className="form-grid">
-            <div className="field"><label htmlFor="bookingPlace">Destino</label><select ref={(node) => { fieldRefs.current.place = node }} id="bookingPlace" value={form.place} onChange={(event) => updateField('place', event.target.value)} required><option value="">Selecciona un destino</option>{places.map((place) => <option key={place.name} value={place.name}>{place.name}</option>)}</select></div>
-            <div className="field"><label htmlFor="bookingDate">Fecha</label><input ref={(node) => { fieldRefs.current.date = node }} id="bookingDate" type="date" min={today} value={form.date} onChange={(event) => updateField('date', event.target.value)} required /></div>
-            <div className="field"><label htmlFor="bookingTime">Horario</label><select ref={(node) => { fieldRefs.current.time = node }} id="bookingTime" value={form.time} onChange={(event) => updateField('time', event.target.value)} required><option value="">Selecciona un horario</option>{['09:00', '11:00', '14:00', '16:00'].map((time) => <option key={time}>{time}</option>)}</select></div>
-            <div className="field"><label htmlFor="bookingPeople">Personas</label><input ref={(node) => { fieldRefs.current.people = node }} id="bookingPeople" type="number" min="1" max="15" value={form.people} onChange={(event) => updateField('people', event.target.value === '' ? '' : String(Math.max(1, Math.min(15, Number(event.target.value)))))} required /></div>
-            <div className="field"><label htmlFor="bookingName">Nombre completo</label><input ref={(node) => { fieldRefs.current.name = node }} id="bookingName" type="text" placeholder="Tu nombre" value={form.name} onChange={(event) => updateField('name', event.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, ''))} required /></div>
-            <div className="field"><label htmlFor="bookingEmail">Correo electrónico</label><input ref={(node) => { fieldRefs.current.email = node }} id="bookingEmail" type="email" placeholder="nombre@correo.com" value={form.email} onChange={(event) => updateField('email', event.target.value)} required /></div>
-            <div className="field full"><label htmlFor="bookingPhone">Teléfono</label><input ref={(node) => { fieldRefs.current.phone = node }} id="bookingPhone" type="tel" placeholder="Ej. 76543210" inputMode="numeric" minLength="8" pattern="[0-9]{8}" autoComplete="tel" value={form.phone.replace(/\D/g, '').slice(0, 8)} onChange={(event) => updateField('phone', event.target.value.replace(/\D/g, '').slice(0, 8))} required /><small className="form-error" aria-live="polite">{form.phone.length > 0 && form.phone.length < 8 ? 'El teléfono debe tener exactamente 8 dígitos.' : ''}</small></div>
-          </div>
-          <div className="booking-summary"><div><strong>Solicitud de reserva</strong><p>Recibirás una confirmación con los detalles de tu solicitud.</p></div><button className="btn primary" type="submit">Confirmar reserva</button></div>
-          {feedback?.type === 'error' && <p className="booking-message form-feedback error-feedback" role="alert">{feedback.text}</p>}
-          {feedback?.type === 'success' && <div className="booking-message" role="status"><div className="reservation-success"><h3>Reserva registrada correctamente</h3><p>Gracias, <strong>{feedback.reservation.name}</strong>. Tu solicitud ha sido registrada.</p><p><strong>Destino:</strong> {feedback.reservation.place}</p><p><strong>Fecha:</strong> {feedback.reservation.date}</p><p><strong>Horario:</strong> {feedback.reservation.time}</p><p><strong>Personas:</strong> {feedback.reservation.people}</p><p><strong>Código de reserva:</strong> {feedback.reservation.code}</p><small>Guarda este código para consultar tu solicitud posteriormente.</small></div></div>}
-        </form>
-      </div>
-    </section>
-  )
-}
-
-function NotFoundPage() {
-  return (
-    <section className="section not-found">
-      <p className="eyebrow">PÁGINA NO ENCONTRADA</p>
-      <h2>Este destino no está disponible</h2>
-      <p>La dirección puede ser incorrecta o la página ya no existe.</p>
-      <Link className="btn primary" to="/">Volver al inicio</Link>
-    </section>
-  )
-}
-
 function App() {
   const location = useLocation()
+  const isHomePage = location.pathname === '/'
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [initialRoute] = useState(() => {
@@ -236,8 +41,12 @@ function App() {
 
   useEffect(() => {
     setMenuOpen(false)
-    window.scrollTo(0, 0)
-  }, [location.pathname])
+    if (location.hash) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      window.scrollTo(0, 0)
+    }
+  }, [location.pathname, location.hash, location.key])
 
   useEffect(() => {
     if (!routeHasChanged) return
@@ -336,6 +145,7 @@ function App() {
       <div className="section-heading">
         <div><p className="eyebrow">PARA EMPEZAR</p><h2>Lugares destacados</h2><p>Explora destinos, consulta sus datos y agrégalos a tu recorrido.</p></div>
       </div>
+      {searchSection}
       <div className="cards">
         {filteredPlaces.map((place) => (
           <PlaceCard key={place.name} place={place} onInfo={setSelectedPlace} onAdd={addToRoute} />
@@ -345,7 +155,7 @@ function App() {
     </section>
   )
   const recommendationsSection = (
-    <section className="recommend-section section">
+    <section className="recommend-section section" id="recomendaciones">
       <div className="section-heading"><div><p className="eyebrow">IDEAS PARA TU VISITA</p><h2>Experiencias recomendadas</h2></div></div>
       <div className="recommend-grid">
         <article><span>01</span><h3>Un día cultural</h3><p>Centro histórico, Plaza 14 de Septiembre y Palacio Portales.</p><button className="text-btn" onClick={() => addRecommendedRoute('cultural')} type="button">Agregar recorrido</button></article>
@@ -369,29 +179,36 @@ function App() {
 
   return (
     <>
-      <header className="hero" id="inicio">
+      <header className={isHomePage ? 'hero' : 'site-header'} id="inicio">
         <nav className="nav" aria-label="Navegación principal">
-          <Link className="logo" to="/">Descubre<span>Cochabamba</span></Link>
+          <Link className="logo" to="/#inicio">Descubre<span>Cochabamba</span></Link>
           <div className={`nav-links${menuOpen ? ' show' : ''}`}>
-            <NavLink to="/lugares" onClick={() => setMenuOpen(false)}>Lugares</NavLink><NavLink to="/categorias" onClick={() => setMenuOpen(false)}>Categorías</NavLink><NavLink to="/planifica" onClick={() => setMenuOpen(false)}>Planifica</NavLink><NavLink to="/reservas" onClick={() => setMenuOpen(false)}>Reservas</NavLink>
+            <Link to="/#lugares" onClick={() => setMenuOpen(false)}>Lugares</Link><Link to="/#categorias" onClick={() => setMenuOpen(false)}>Categorías</Link><Link to="/#planifica" onClick={() => setMenuOpen(false)}>Planifica</Link><Link to="/#reservas" onClick={() => setMenuOpen(false)}>Reservas</Link>
           </div>
           <button className="menu-btn" onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={menuOpen} type="button">☰</button>
         </nav>
-        <div className="hero-content"><p className="eyebrow">GUÍA TURÍSTICA</p><h1>Descubre la magia de Cochabamba</h1><p>Conoce lugares increíbles, organiza tu recorrido y reserva experiencias para disfrutar la Llajta a tu manera.</p><Link className="btn primary" to="/lugares">Explorar lugares</Link></div>
+        {isHomePage && (
+          <div className="hero-content">
+            <p className="eyebrow">BIENVENIDO A COCHABAMBA</p>
+            <h1>Descubre la magia de Cochabamba</h1>
+            <p>Conoce lugares increíbles, organiza tu recorrido y reserva experiencias para disfrutar la Llajta a tu manera.</p>
+            <Link className="btn primary" to="/#lugares">Explorar lugares</Link>
+          </div>
+        )}
       </header>
 
       <main>
         <Routes>
-          <Route path="/" element={<>{searchSection}{categoriesSection}{placesSection}{recommendationsSection}{plannerSection}<BookingSection /></>} />
-          <Route path="/lugares" element={<>{searchSection}{categoriesSection}{placesSection}</>} />
+          <Route path="/" element={<>{categoriesSection}{placesSection}{recommendationsSection}{plannerSection}<BookingSection /></>} />
+          <Route path="/lugares" element={<>{categoriesSection}{placesSection}</>} />
           <Route path="/categorias" element={<>{categoriesSection}{placesSection}</>} />
-          <Route path="/planifica" element={<>{recommendationsSection}{plannerSection}</>} />
+          <Route path="/planifica" element={<>{plannerSection}{recommendationsSection}</>} />
           <Route path="/reservas" element={<BookingSection />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
 
-      <footer><div><strong>Descubre Cochabamba</strong><p>Una guía digital para conocer, planificar y disfrutar la Llajta.</p></div><div className="footer-links"><Link to="/">Inicio</Link><Link to="/lugares">Lugares</Link><Link to="/categorias">Categorías</Link><Link to="/planifica">Planifica</Link><Link to="/reservas">Reservas</Link></div><p>© 2026 · Proyecto académico</p></footer>
+      <footer><div><strong>Descubre Cochabamba</strong><p>Una guía digital para conocer, planificar y disfrutar la Llajta.</p></div><div className="footer-links"><Link to="/#inicio">Inicio</Link><Link to="/#lugares">Lugares</Link><Link to="/#categorias">Categorías</Link><Link to="/#planifica">Planifica</Link><Link to="/#reservas">Reservas</Link></div><p>© 2026 · Proyecto académico</p></footer>
       <DestinationModal place={selectedPlace} isAdded={selectedPlace ? route.includes(selectedPlace.name) : false} onClose={closeModal} onAdd={addToRoute} />
     </>
   )

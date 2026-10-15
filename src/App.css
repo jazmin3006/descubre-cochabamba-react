@@ -46,6 +46,13 @@ select {
   background: linear-gradient(115deg, rgba(16, 59, 49, .94), rgba(16, 59, 49, .58)), linear-gradient(135deg, #8b6b42, #d8b875 55%, #497d68);
 }
 
+.site-header {
+  position: relative;
+  z-index: 4;
+  background: var(--green);
+  color: white;
+}
+
 .hero::after {
   position: absolute;
   right: -170px;
@@ -170,11 +177,7 @@ select {
 }
 
 .search-section {
-  position: relative;
-  z-index: 5;
-  max-width: 1000px;
-  margin: -55px auto 0;
-  padding: 0 24px;
+  margin: 0 0 28px;
 }
 
 .search-box {
